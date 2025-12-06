@@ -1,12 +1,12 @@
 import axios from 'axios';
 
-// Try port 5001 first (common when 5000 is busy), then 5000
+// Default to port 5000, backend will auto-switch to 5001 if needed
 const getApiBaseUrl = () => {
   if (import.meta.env.VITE_API_URL) {
     return import.meta.env.VITE_API_URL;
   }
-  // Default to 5001 since backend often uses it when 5000 is busy
-  return 'http://localhost:5001/api';
+  // Try 5000 first (default), backend will use 5001 if 5000 is busy
+  return 'http://localhost:5000/api';
 };
 
 const API_BASE_URL = getApiBaseUrl();

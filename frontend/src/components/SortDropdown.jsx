@@ -19,23 +19,12 @@ const SortDropdown = ({ value, onChange }) => {
   const currentValue = value ? `${value.field}:${value.order}` : 'date:desc';
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: -10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className="flex items-center space-x-3"
-    >
-      <motion.div
-        whileHover={{ rotate: 180 }}
-        transition={{ duration: 0.3 }}
-        className="bg-gradient-to-br from-primary-500 to-accent-500 p-2 rounded-lg shadow-md"
-      >
-        <ArrowUpDown className="w-5 h-5 text-white" />
-      </motion.div>
+    <div className="flex items-center space-x-2">
+      <span className="text-sm text-gray-600">Sort by:</span>
       <select
         value={currentValue}
         onChange={handleChange}
-        className="select-field min-w-[220px] font-semibold text-gray-700 hover:border-primary-400 focus:shadow-glow"
+        className="select-field min-w-[200px] text-sm border border-gray-300 rounded px-3 py-2"
       >
         {sortOptions.map(option => (
           <option key={option.value} value={option.value}>
@@ -43,7 +32,7 @@ const SortDropdown = ({ value, onChange }) => {
           </option>
         ))}
       </select>
-    </motion.div>
+    </div>
   );
 };
 

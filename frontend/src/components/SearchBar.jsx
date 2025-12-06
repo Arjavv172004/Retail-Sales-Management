@@ -21,40 +21,26 @@ const SearchBar = ({ value, onChange, placeholder = "Search by customer name or 
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: -10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className="relative"
-    >
-      <div className="relative group">
-        <motion.div
-          className="absolute left-4 top-1/2 transform -translate-y-1/2 text-primary-500 z-10"
-          whileHover={{ scale: 1.1 }}
-        >
-          <Search className="w-5 h-5" />
-        </motion.div>
+    <div className="relative">
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
         <input
           type="text"
           value={localValue}
           onChange={handleChange}
           placeholder={placeholder}
-          className="input-field pl-12 pr-12 w-full shadow-soft focus:shadow-glow focus:scale-[1.01] transition-all duration-300"
+          className="input-field pl-10 pr-10 w-64 border border-gray-300 rounded"
         />
         {localValue && (
-          <motion.button
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            whileHover={{ scale: 1.15, rotate: 90 }}
-            whileTap={{ scale: 0.9 }}
+          <button
             onClick={handleClear}
-            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-primary-600 transition-colors bg-white rounded-full p-1 hover:bg-primary-50"
+            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
           >
             <X className="w-4 h-4" />
-          </motion.button>
+          </button>
         )}
       </div>
-    </motion.div>
+    </div>
   );
 };
 
