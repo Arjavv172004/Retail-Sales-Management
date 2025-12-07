@@ -2,15 +2,28 @@ import Papa from 'papaparse';
 
 export const loadCSV = async (url) => {
   try {
-    console.log('📂 Starting CSV download...');
+    console.log('📂 Starting CSV download from:', url);
     const startTime = Date.now();
     
-    const response = await fetch(url);
+    const response = await fetch(url, {
+      method: 'GET',
+      mode: 'cors',
+      headers: {
+        'Accept': 'text/csv,application/csv,text/plain',
+      },
+    });
+    
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      const errorText = await response.text().catch(() => 'Unable to read error');
+      throw new Error(`HTTP ${response.status}: ${response.statusText}. ${errorText}`);
     }
     
     const csvText = await response.text();
+    
+    if (!csvText || csvText.trim().length === 0) {
+      throw new Error('CSV file is empty');
+    }
+    
     const downloadTime = ((Date.now() - startTime) / 1000).toFixed(2);
     console.log(`✅ Downloaded in ${downloadTime}s, parsing...`);
     
@@ -24,6 +37,12 @@ export const loadCSV = async (url) => {
           if (results.errors.length > 0) {
             console.warn('⚠️ Parsing warnings:', results.errors.slice(0, 3));
           }
+          
+          if (!results.data || results.data.length === 0) {
+            reject(new Error('No data found in CSV file'));
+            return;
+          }
+          
           console.log(`✅ Parsed ${results.data.length.toLocaleString()} rows`);
           resolve(results.data);
         },
@@ -34,7 +53,15 @@ export const loadCSV = async (url) => {
     });
   } catch (error) {
     console.error('❌ Error loading CSV:', error);
-    throw error;
+    
+    // Provide specific error messages
+    if (error.message.includes('Failed to fetch')) {
+      throw new Error('CORS Error: The CSV file cannot be accessed due to CORS policy. Please enable CORS on your Cloudflare R2 bucket or use a different hosting solution.');
+    } else if (error.message.includes('NetworkError')) {
+      throw new Error('Network Error: Unable to reach the CSV file. Please check your internet connection and the URL.');
+    } else {
+      throw error;
+    }
   }
 };
 
