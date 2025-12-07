@@ -3,7 +3,7 @@
 
 export const CSV_CONFIG = {
   // Option 1: Direct URL to CSV file
-  url: 'YOUR_CSV_URL_HERE',
+  url: 'https://drive.google.com/file/d/1MKJmmKmlOypokIpF37BglFjraLvBQztY/view?usp=sharing',
   
   // Option 2: Multiple CSV files (if needed in the future)
   // transactions: 'https://example.com/transactions.csv',
