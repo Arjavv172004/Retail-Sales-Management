@@ -1,17 +1,18 @@
 import Papa from 'papaparse';
 
-/**
- * Loads and parses a CSV file from a URL
- * @param {string} url - The URL of the CSV file
- * @returns {Promise<Array>} Parsed CSV data as array of objects
- */
 export const loadCSV = async (url) => {
   try {
+    console.log('📂 Starting CSV download...');
+    const startTime = Date.now();
+    
     const response = await fetch(url);
     if (!response.ok) {
-      throw new Error(`Failed to fetch CSV: ${response.statusText}`);
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
+    
     const csvText = await response.text();
+    const downloadTime = ((Date.now() - startTime) / 1000).toFixed(2);
+    console.log(`✅ Downloaded in ${downloadTime}s, parsing...`);
     
     return new Promise((resolve, reject) => {
       Papa.parse(csvText, {
@@ -21,8 +22,9 @@ export const loadCSV = async (url) => {
         transformHeader: (header) => header.trim(),
         complete: (results) => {
           if (results.errors.length > 0) {
-            console.warn('CSV parsing warnings:', results.errors);
+            console.warn('⚠️ Parsing warnings:', results.errors.slice(0, 3));
           }
+          console.log(`✅ Parsed ${results.data.length.toLocaleString()} rows`);
           resolve(results.data);
         },
         error: (error) => {
@@ -31,14 +33,11 @@ export const loadCSV = async (url) => {
       });
     });
   } catch (error) {
-    console.error('Error loading CSV:', error);
+    console.error('❌ Error loading CSV:', error);
     throw error;
   }
 };
 
-/**
- * Transform raw CSV row to transaction object
- */
 export const transformTransaction = (row) => ({
   transactionId: row['Transaction ID'] || '',
   date: row['Date'] || '',
@@ -68,9 +67,6 @@ export const transformTransaction = (row) => ({
   employeeName: row['Employee Name'] || '',
 });
 
-/**
- * Extract unique filter options from transactions
- */
 export const extractFilterOptions = (transactions) => {
   const regions = new Set();
   const genders = new Set();
