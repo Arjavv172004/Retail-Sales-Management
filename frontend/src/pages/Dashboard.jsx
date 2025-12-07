@@ -1,5 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useTransactions, useFilterOptions } from '../hooks/useTransactions';
+import { loadCSV, transformTransaction, extractFilterOptions } from '../services/csvLoader';
+import { applyFilters } from '../services/filterUtils';
+import { sortTransactions } from '../services/sortUtils';
+import { CSV_CONFIG } from '../config';
 import Sidebar from '../components/Sidebar';
 import SearchBar from '../components/SearchBar';
 import FilterRow from '../components/FilterRow';
@@ -10,7 +13,13 @@ import Pagination from '../components/Pagination';
 import { Loader2 } from 'lucide-react';
 
 const Dashboard = () => {
+  const [allTransactions, setAllTransactions] = useState([]);
+  const [filterOptions, setFilterOptions] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [filters, setFilters] = useState({
     regions: [],
     genders: [],
@@ -24,17 +33,48 @@ const Dashboard = () => {
   });
   const [sort, setSort] = useState({ field: 'date', order: 'desc' });
   const [page, setPage] = useState(1);
-  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const ITEMS_PER_PAGE = 10;
 
-  const { data: filterOptions, isLoading: loadingOptions } = useFilterOptions();
+  // Load CSV data on mount
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        
+        console.log('📂 Loading CSV from:', CSV_CONFIG.url);
+        
+        // Load CSV from URL
+        const rawData = await loadCSV(CSV_CONFIG.url);
+        
+        // Transform data
+        const transactions = rawData.map(transformTransaction);
+        
+        // Store in state
+        setAllTransactions(transactions);
+        
+        // Extract filter options
+        const options = extractFilterOptions(transactions);
+        setFilterOptions(options);
+        
+        console.log(`✅ Loaded ${transactions.length.toLocaleString()} transactions`);
+      } catch (err) {
+        console.error('Error loading data:', err);
+        setError(err.message || 'Failed to load data');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadData();
+  }, []);
 
   // Debounce search
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(search);
-      setPage(1); // Reset to page 1 on search change
+      setPage(1);
     }, 300);
-
     return () => clearTimeout(timer);
   }, [search]);
 
@@ -43,33 +83,48 @@ const Dashboard = () => {
     setPage(1);
   }, [filters, sort]);
 
-  const queryParams = useMemo(() => ({
-    search: debouncedSearch,
-    ...filters,
-    sortBy: sort.field,
-    sortOrder: sort.order,
-  }), [debouncedSearch, filters, sort]);
+  // Process data: filter, sort, paginate
+  const processedData = useMemo(() => {
+    if (!allTransactions.length) {
+      return { 
+        data: [], 
+        pagination: { 
+          currentPage: 1, 
+          totalPages: 0, 
+          totalRecords: 0, 
+          limit: ITEMS_PER_PAGE 
+        } 
+      };
+    }
 
-  const { data, isLoading, error } = useTransactions(queryParams, page, 10);
+    // Apply filters
+    const filtered = allTransactions.filter(transaction => 
+      applyFilters(transaction, { ...filters, search: debouncedSearch })
+    );
+
+    // Apply sorting
+    const sorted = sortTransactions(filtered, sort.field, sort.order);
+
+    // Calculate pagination
+    const totalRecords = sorted.length;
+    const totalPages = Math.ceil(totalRecords / ITEMS_PER_PAGE);
+    const startIndex = (page - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    const paginated = sorted.slice(startIndex, endIndex);
+
+    return {
+      data: paginated,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalRecords,
+        limit: ITEMS_PER_PAGE,
+      },
+    };
+  }, [allTransactions, filters, debouncedSearch, sort, page]);
 
   const handleFilterChange = (newFilters) => {
     setFilters(prev => ({ ...prev, ...newFilters }));
-  };
-
-  const handleResetFilters = () => {
-    setFilters({
-      regions: [],
-      genders: [],
-      ageMin: undefined,
-      ageMax: undefined,
-      categories: [],
-      tags: [],
-      paymentMethods: [],
-      dateFrom: undefined,
-      dateTo: undefined,
-    });
-    setSearch('');
-    setPage(1);
   };
 
   const handleSort = (field, order) => {
@@ -83,75 +138,65 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-white flex">
-      {/* Sidebar */}
       <Sidebar />
 
-      {/* Main Content */}
       <div className="flex-1 ml-64">
-        {/* Header */}
         <div className="bg-white border-b border-gray-200 px-8 py-6">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-semibold text-gray-900">Sales Management System</h1>
             <div className="flex items-center space-x-4">
-              <SearchBar
-                value={search}
-                onChange={setSearch}
-                placeholder="Name, Phone no."
-              />
-              <SortDropdown
-                value={sort}
-                onChange={handleSort}
-              />
+              <SearchBar value={search} onChange={setSearch} />
+              <SortDropdown value={sort} onChange={handleSort} />
             </div>
           </div>
         </div>
 
-        {/* Content Area */}
         <div className="px-8 py-6">
-          {/* Filter Row */}
-          <FilterRow
-            filterOptions={filterOptions}
-            filters={filters}
-            onFilterChange={handleFilterChange}
-          />
-
-          {/* Summary Cards */}
-          <SummaryCards data={data} />
-
-          {/* Error State */}
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-800 p-4 rounded mb-4">
-              <p className="font-semibold">Error loading transactions</p>
-              <p className="text-sm mt-1">{error.message || 'An unexpected error occurred'}</p>
+              <p className="font-semibold">Error loading data</p>
+              <p className="text-sm mt-1">{error}</p>
+              <p className="text-xs mt-2 text-red-600">
+                Please check the CSV_URL in frontend/src/config.js
+              </p>
             </div>
           )}
 
-          {/* Loading State */}
           {isLoading && (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-6 h-6 animate-spin text-gray-400 mr-2" />
-              <span className="text-gray-600">Loading...</span>
+              <span className="text-gray-600">Loading CSV data...</span>
             </div>
           )}
 
-          {/* Transaction Table */}
           {!error && !isLoading && (
-            <TransactionTable
-              transactions={data?.data || []}
-              onSort={handleSort}
-              currentSort={sort}
-            />
-          )}
-
-          {/* Pagination */}
-          {data?.pagination && data.pagination.totalPages > 1 && (
-            <div className="mt-6">
-              <Pagination
-                currentPage={data.pagination.currentPage}
-                totalPages={data.pagination.totalPages}
-                onPageChange={handlePageChange}
+            <>
+              <FilterRow
+                filterOptions={filterOptions}
+                filters={filters}
+                onFilterChange={handleFilterChange}
               />
-            </div>
+
+              <SummaryCards data={{ data: processedData.data }} />
+
+              <TransactionTable
+                transactions={processedData.data}
+                onSort={handleSort}
+                currentSort={sort}
+              />
+
+              {processedData.pagination.totalPages > 1 && (
+                <Pagination
+                  currentPage={processedData.pagination.currentPage}
+                  totalPages={processedData.pagination.totalPages}
+                  onPageChange={handlePageChange}
+                />
+              )}
+
+              <div className="mt-6 text-center text-sm text-gray-500">
+                Showing {processedData.data.length} of {processedData.pagination.totalRecords.toLocaleString()} transactions
+              </div>
+            </>
           )}
         </div>
       </div>
@@ -160,4 +205,3 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
-
