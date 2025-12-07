@@ -1,6 +1,3 @@
-/**
- * Sort transactions by the specified field and order
- */
 export const sortTransactions = (transactions, sortBy, sortOrder = 'asc') => {
   if (!sortBy) return transactions;
   
