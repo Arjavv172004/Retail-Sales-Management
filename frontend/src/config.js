@@ -3,7 +3,7 @@
 
 export const CSV_CONFIG = {
   // Option 1: Direct URL to CSV file
-  url: 'https://drive.google.com/file/d/1MKJmmKmlOypokIpF37BglFjraLvBQztY/view?usp=sharing',
+  url: 'https://pub-d41d0d5a163b4a8698cc46fc6a179633.r2.dev/truestate_assignment_dataset.csv',
   
   // Option 2: Multiple CSV files (if needed in the future)
   // transactions: 'https://example.com/transactions.csv',
